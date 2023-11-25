@@ -1,6 +1,8 @@
 import tkinter as tk
 from tkinter import messagebox
-
+import pygame 
+import datetime
+import pickle
 ############################# Inica Funcion de Ventana Principal #######################################
 def ventana_principal():
     global ventana
@@ -58,10 +60,13 @@ def colocar_numero(numero):
         # Guarda el número en la pila correspondiente a esa casilla
         stacks[row][col].append(numero)
 
+# Agrega una variable para controlar si el juego ha iniciado
+juego_iniciado = False
 
 #Funcion para crear el tablero, y los botones de numeros y de opciones
 def iniciar_juego(contenido):
-    global root
+    global root,juego_iniciado
+    juego_iniciado = True
     
     root = tk.Tk()
     root.title("KenKen")
@@ -139,12 +144,12 @@ def iniciar_juego(contenido):
     # Botones de juego debajo del tablero
     botones_juego = [
         ("Iniciar Juego",print("Iniciar Juego")),
-        ("Validar Juego", print("Validar Juego")),
+        ("Validar Juego", validar_juego),
         ("Deshacer Jugada", deshacer_jugada),
-        ("Otro Juego", print("Otro Juego")),
+        ("Otro Juego", empezar_otro_juego),
         ("Terminar Juego", terminar_juego),
         ("Reiniciar Juego", reiniciar_juego),
-        ("Top 10", lambda: print("Top 10")),
+        ("Top 10", mostrar_top10),
     ]
 
     for nombre, comando in botones_juego:
@@ -348,6 +353,33 @@ def crear_ventana():
     
 #Funcion para terminar el juego
 def terminar_juego():
+    #NUEVO PARA REPRODUCIR SONIDO
+    felicitaciones = "¡FELICITACIONES, JUEGO COMPLETADO!"
+    messagebox.showinfo("Juego Completado", felicitaciones)
+
+    # Reproducir un sonido de aplausos
+    reproducir_sonido()
+
+
+ #NUEVO PARA VALIDAR
+    global nombre_jugador,juego_iniciado
+   
+    if not juego_iniciado:
+        messagebox.showinfo("Error", "NO SE HA INICIADO EL JUEGO.")
+        return
+
+    if not nombre_jugador:
+        messagebox.showinfo("Error", "NO SE HA INICIADO EL JUEGO")
+        felicitaciones = "¡FELICITACIONES, JUEGO COMPLETADO!"
+        return felicitaciones 
+
+    # Validar el juego
+    if not validar_juego():
+        messagebox.showinfo("Errores", "HAY ERRORES EN EL JUEGO. Realiza las correcciones necesarias.")
+        return
+
+    messagebox.showinfo("Juego Completado", felicitaciones)
+
     # Función que se ejecuta al presionar el botón "Terminar Juego"
     def confirmar_terminar():
         # Función para mostrar el cuadro de diálogo de confirmación
@@ -358,11 +390,138 @@ def terminar_juego():
     # Llama a la función de confirmación para mostrar el cuadro de diálogo
     confirmar_terminar()
 
+ #PARA VALIDAR JUEGO 
+def validar_juego():
+    for coords, operacion in operaciones:
+        if not coords or not operacion:
+            continue
 
+        resultado_esperado = int(operacion[:-1])
+        valores_jaula = [get_valor_casilla(coord) for coord in coords]
 
+        # Verificar si hay números repetidos en la jaula
+        if len(valores_jaula) != len(set(valores_jaula)):
+            resaltar_jaula(coords)
+            return False
 
+        # Verificar si el resultado de la operación es correcto
+        if not eval_operacion(operacion, valores_jaula):
+            resaltar_jaula(coords)
+            return False
 
+    return True
 
+def get_valor_casilla(coord):
+    row, col = coord
+    entry = entries[coord]
+    try:
+        valor = int(entry.num_label.cget("text"))
+        return valor
+    except ValueError:
+        return 0
+
+def eval_operacion(operacion, valores):
+    try:
+        resultado = eval("".join(str(valor) for valor in valores) + operacion)
+        return resultado == valores[0]
+    except (SyntaxError, ZeroDivisionError):
+        return False
+
+def resaltar_jaula(coords):
+    for coord in coords:
+        entry = entries[coord]
+        entry.config(bg="red")
+
+#TOP10 
+def registrar_en_top10():
+  
+    global nombre_jugador, nivel_actual, tiempo_inicial
+
+    if not tiempo_inicial:
+        messagebox.showinfo("Error", "NO SE HA INICIADO EL JUEGO")
+        return
+
+    tiempo_final = datetime.datetime.now()
+    tiempo_transcurrido = tiempo_final - tiempo_inicial
+    marca_actual = {"Jugador": nombre_jugador, "Tiempo": tiempo_transcurrido, "Fecha": tiempo_final}
+
+    top10 = cargar_top10()
+
+    if nivel_actual not in top10:
+        top10[nivel_actual] = []
+
+    top10[nivel_actual].append(marca_actual)
+    top10[nivel_actual] = sorted(top10[nivel_actual], key=lambda x: x["Tiempo"])
+
+    if len(top10[nivel_actual]) > 10:
+        top10[nivel_actual] = top10[nivel_actual][:10]
+
+    guardar_top10(top10)
+
+def cargar_top10():
+    try:
+        with open("kenken_top10.dat", "rb") as file:
+            top10 = pickle.load(file)
+    except (FileNotFoundError, EOFError):
+        top10 = {}
+    return top10
+
+def guardar_top10(top10):
+    with open("kenken_top10.dat", "wb") as file:
+        pickle.dump(top10, file)
+
+def mostrar_top10():
+    top10 = cargar_top10()
+
+    if nivel_actual not in top10 or not top10[nivel_actual]:
+        messagebox.showinfo("Top 10", "No hay registros en el Top 10 para este nivel.")
+        return
+
+    top10_window = Toplevel(root)
+    top10_window.title("Top 10")
+
+    nivel_label = Label(top10_window, text=f"NIVEL {nivel_actual.upper()}", font=("Helvetica", 16, "bold"))
+    nivel_label.grid(row=0, column=0, columnspan=3, pady=10)
+
+    headers = ["JUGADOR", "TIEMPO"]
+    for col, header in enumerate(headers):
+        header_label = Label(top10_window, text=header, font=("Helvetica", 12, "bold"))
+        header_label.grid(row=1, column=col, pady=5)
+
+    for row, marca in enumerate(top10[nivel_actual]):
+        jugador_label = Label(top10_window, text=marca["Jugador"])
+        jugador_label.grid(row=row + 2, column=0, pady=5)
+
+        tiempo_label = Label(top10_window, text=str(marca["Tiempo"]))
+        tiempo_label.grid(row=row + 2, column=1, pady=5)
+ #HASTA ACÀ NUEVO PARA VALIDAR Y TOP 10
+
+#NUEVO DE OTRO JUEGO 
+def empezar_otro_juego():
+    global juego_iniciado
+    if not juego_iniciado:
+        messagebox.showinfo("Error", "NO SE HA INICIADO EL JUEGO.")
+        return
+
+    respuesta = messagebox.askquestion("Empezar otro juego", "¿ESTÁ SEGURO DE TERMINAR ESTE JUEGO Y EMPEZAR CON OTRO?")
+    
+    if respuesta == "yes":
+        # Restablecer variables o realizar acciones necesarias para iniciar otro juego
+        juego_iniciado = False
+        # Resto del código para iniciar el nuevo juego...
+    else:
+        # El jugador ha decidido continuar con el juego actual
+        pass
+ #NUEVO PARA REPRODUCIR SONIDO
+def reproducir_sonido():
+    # Obtener la ruta completa al archivo de sonido
+    directorio_actual = os.path.dirname(os.path.abspath(__file__))
+    archivo_sonido = os.path.join(directorio_actual, "PROYECTO3", "APLAUSOS.mp3")
+
+    pygame.mixer.music.load(archivo_sonido)
+
+    # Reproducir el sonido
+    pygame.mixer.music.play()
 
 ################################# Inicia Funciones para Configuracion ###############################################
 def guardar_configuracion():
@@ -436,13 +595,6 @@ def configuracion():
 
 
 
-
-
-
-
-
-
-
 ################################# Inicia Funciones para Ayuda ###############################################
 def ayuda():
     # Agrega aquí la lógica para la opción "Ayuda"
@@ -482,7 +634,6 @@ def acerca_de():
 
 def salir():
     ventana.quit()
-
 
 #Abrir y guardar los datos del archivo de configuracion
 archivo = "kenken_juegos.dat"
