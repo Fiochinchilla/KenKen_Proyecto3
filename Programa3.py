@@ -1,5 +1,6 @@
+import os
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import Label, Toplevel, messagebox
 import pygame 
 import datetime
 import pickle
@@ -350,7 +351,7 @@ def crear_ventana():
 
     ventana_nombre.mainloop()
 
-    
+   
 #Funcion para terminar el juego
 def terminar_juego():
     #NUEVO PARA REPRODUCIR SONIDO
@@ -362,13 +363,13 @@ def terminar_juego():
 
 
  #NUEVO PARA VALIDAR
-    global nombre_jugador,juego_iniciado
+    global nombre_usuario,juego_iniciado
    
     if not juego_iniciado:
         messagebox.showinfo("Error", "NO SE HA INICIADO EL JUEGO.")
         return
 
-    if not nombre_jugador:
+    if not nombre_usuario:
         messagebox.showinfo("Error", "NO SE HA INICIADO EL JUEGO")
         felicitaciones = "¡FELICITACIONES, JUEGO COMPLETADO!"
         return felicitaciones 
@@ -435,7 +436,7 @@ def resaltar_jaula(coords):
 #TOP10 
 def registrar_en_top10():
   
-    global nombre_jugador, nivel_actual, tiempo_inicial
+    global nombre_usuario, nivel_actual, tiempo_inicial
 
     if not tiempo_inicial:
         messagebox.showinfo("Error", "NO SE HA INICIADO EL JUEGO")
@@ -443,7 +444,7 @@ def registrar_en_top10():
 
     tiempo_final = datetime.datetime.now()
     tiempo_transcurrido = tiempo_final - tiempo_inicial
-    marca_actual = {"Jugador": nombre_jugador, "Tiempo": tiempo_transcurrido, "Fecha": tiempo_final}
+    marca_actual = {"Jugador": nombre_usuario, "Tiempo": tiempo_transcurrido, "Fecha": tiempo_final}
 
     top10 = cargar_top10()
 
@@ -508,7 +509,6 @@ def empezar_otro_juego():
     if respuesta == "yes":
         # Restablecer variables o realizar acciones necesarias para iniciar otro juego
         juego_iniciado = False
-        # Resto del código para iniciar el nuevo juego...
     else:
         # El jugador ha decidido continuar con el juego actual
         pass
@@ -597,7 +597,8 @@ def configuracion():
 
 ################################# Inicia Funciones para Ayuda ###############################################
 def ayuda():
-    # Agrega aquí la lógica para la opción "Ayuda"
+    archivo_pdf=r"manual_de_usuario_kenken.pdf"
+    os.startfile(archivo_pdf)
     messagebox.showinfo("Ayuda", "¡Obtén ayuda aquí!")
 
 
@@ -627,13 +628,12 @@ def acerca_de():
     info_label = tk.Label(ventana_acerca_de, text=info_text, font=("Arial", 12))
     info_label.pack(padx=20, pady=20)
 
-    
-
 
 ################################# Inicia Funciones para Salir ###############################################
 
 def salir():
     ventana.quit()
+
 
 #Abrir y guardar los datos del archivo de configuracion
 archivo = "kenken_juegos.dat"
@@ -645,7 +645,8 @@ selected_entry = None
 entries = {}  # Diccionario para almacenar los entries
 operaciones = []  # Lista para almacenar las operaciones
 nombre_jugador = ""
-
+nivel_actual= " "
+tiempo_inicial= " "
 
 #Pilas para almacenar los datos colocados en cada una de las casillas
 stacks = [[[] for _ in range(6)] for _ in range(6)]
